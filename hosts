@@ -1,0 +1,2 @@
+[all]
+petclinic1 ansible_host=app_vm_ip ansible_user=ubuntu
