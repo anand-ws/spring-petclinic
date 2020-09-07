@@ -1,0 +1,61 @@
+pipeline {
+
+  agent any
+  
+  stages {
+
+    stage('git clone') {
+      steps {
+        git branch: 'main', url: 'https://github.com/anand-ws/spring-petclinic.git'
+      }
+    }
+
+    stage('run test') {
+      steps {
+        sh '''
+          ./mvnw clean test
+          '''
+        // publishHTML([allowMissing: false, alwaysLinkToLastBuild: true, keepAll: false, reportDir: 'target/site/jacoco', reportFiles: 'index.html', reportName: 'HTML Report', reportTitles: ''])
+        junit allowEmptyResults: true, testResults: 'target/site/jacoco/*xml'
+
+      }      
+    }
+
+    stage('build artifact') {
+      steps {
+        sh '''
+          ./mvnw package
+          '''
+        archiveArtifacts artifacts: 'target/spring-petclinic*.jar', onlyIfSuccessful: true
+      }      
+    }
+
+    stage('docker build') {
+      steps {
+        sh '''
+          docker build -t pratik141/petclinic:v0.0.${BUILD_NUMBER} .
+          '''
+      }      
+    }
+
+    stage('publish docker') {
+      steps {
+        withCredentials([usernamePassword(credentialsId: 'dockerhub', passwordVariable: 'DOCKER_REGISTRY_PWD', usernameVariable: 'DOCKER_REGISTRY_USER')]) {
+          sh """
+            docker login --username $DOCKER_REGISTRY_USER --password $DOCKER_REGISTRY_PWD
+            docker push pratik141/petclinic:v0.0.${BUILD_NUMBER}
+          """
+        }
+      }
+    }
+
+    stage('deploy') {
+      steps {
+        sh 'sed -i "s|app_vm_ip|10.0.3.5|g" hosts'
+        sh 'sed -i "s|latest|v0.0.${BUILD_NUMBER}|g" ans_task.yml'
+        ansiblePlaybook credentialsId: 'apps', installation: 'ansible', inventory: 'hosts', limit: 'all', playbook: 'ans_task.yml'
+      }
+    }   
+
+  }
+}

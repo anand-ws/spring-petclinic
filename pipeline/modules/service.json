@@ -1,0 +1,23 @@
+[
+  {
+    "cpu": 10,
+    "command": [
+      "sleep",
+      "10"
+    ],
+    "entryPoint": [
+      "/"
+    ],
+    "environment": "${environment_list}",
+    "essential": true,
+    "image": "${image_url}",
+    "memory": "${memory}",
+    "name": "${app_name}",
+    "portMappings": [
+      {
+        "containerPort": 80,
+        "hostPort": 8080
+      }
+    ]
+  }
+]
